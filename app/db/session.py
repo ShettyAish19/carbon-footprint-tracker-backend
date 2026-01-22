@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
-
+load_dotenv() 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(
@@ -13,7 +13,7 @@ engine = create_engine(
 )
 
 
-load_dotenv()  # take environment variables from .env file
+ # take environment variables from .env file
 '''DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "sqlite:///./carbon_dev.db"  # default fallback if no env var set
