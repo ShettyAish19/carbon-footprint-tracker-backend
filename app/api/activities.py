@@ -23,7 +23,7 @@ from app.services.emissions import (
 # --------------------------------------------------
 
 router = APIRouter()
-init_db()
+#init_db()  ---NOTE Changes
 
 # --------------------------------------------------
 # Request / Response Schemas
