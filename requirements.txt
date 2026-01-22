@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+pydantic
+alembic
+httpx
+python-dotenv
+pika>=1.3.0
+psycopg2-binary>=2.9.6
+google-genai
