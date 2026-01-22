@@ -7,7 +7,7 @@ from app.api import gamification
 from app.api import auth
 from contextlib import asynccontextmanager
 from app.api import stats
-from backend.app.db.session import init_db
+from app.db.session import init_db
 
 
 @asynccontextmanager
