@@ -22,7 +22,7 @@ print("DEBUG CONSUMER CLIMATIQ:", bool(os.getenv("CLIMATIQ_API_KEY")))
 init_db()
 
 QUEUE = os.getenv("RABBIT_QUEUE", "activities")
-params = _get_connection_params()
+# params = _get_connection_params()
 
 def handle_message(body: bytes):
     try:
@@ -46,10 +46,11 @@ def handle_message(body: bytes):
                 user_id=user_id,
                 activity_id=activity_id,
                 text=s.get("text"),
-                est_saving=s.get("est_saving_kg"),
+                est_saving=s.get("est_saving_kg", 0.0),
                 difficulty=s.get("difficulty"),
                 meta=s,
-                source="ai"
+                source="ai" if os.getenv("USE_GEMINI", "false").lower() == "true" else "rule"
+
             )
 
         # ✅ GAMIFICATION UPDATE (critical)
@@ -65,6 +66,7 @@ def handle_message(body: bytes):
 
 
 def consume():
+    params = _get_connection_params()
     conn = pika.BlockingConnection(params)
     channel = conn.channel()
     channel.queue_declare(queue=QUEUE, durable=True)
