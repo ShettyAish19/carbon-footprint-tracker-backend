@@ -179,7 +179,7 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 # CONFIG
 # -------------------------------------------------
 
-USE_GEMINI = False   # ✅ turn ON only when quota allows
+USE_GEMINI = True   # ✅ turn ON only when quota allows
 MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # -------------------------------------------------
@@ -187,31 +187,122 @@ MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 # -------------------------------------------------
 
 def rule_based_suggestions(activity: Dict[str, Any]) -> List[Dict[str, Any]]:
+    suggestions = []
     typ = activity.get("type")
 
+    # -----------------------
+    # TRAVEL
+    # -----------------------
     if typ == "travel":
+        mode = (activity.get("mode") or "").lower()
         d = float(activity.get("distance_km") or 0)
-        return [{
-            "text": f"Replace trips under {max(2, int(d))} km with walking or cycling.",
-            "difficulty": "easy"
-        }]
 
-    if typ == "electricity":
-        return [{
-            "text": "Switch off idle appliances to reduce daily electricity usage.",
-            "difficulty": "easy"
-        }]
+        if mode in ["bike", "bicycle", "cycle"]:
+            suggestions.append({
+                "text": f"Cycling for {d:.1f} km is a low-carbon choice. Keep using it for short daily trips.",
+                "difficulty": "easy"
+            })
+            suggestions.append({
+                "text": "You could replace another short trip this week with cycling to maintain this habit.",
+                "difficulty": "easy"
+            })
 
-    if typ == "food":
-        return [{
-            "text": "Increase plant-based meals during the week to lower food emissions.",
-            "difficulty": "easy"
-        }]
+        elif mode == "walk":
+            suggestions.append({
+                "text": "Walking produces almost zero emissions. Consider using it for all trips under 2 km.",
+                "difficulty": "easy"
+            })
 
-    return [{
-        "text": "Reduce energy waste and avoid unnecessary consumption.",
-        "difficulty": "easy"
-    }]
+        elif mode == "train":
+            suggestions.append({
+                "text": f"Train travel has lower emissions per km. Continue using it for medium-distance travel.",
+                "difficulty": "easy"
+            })
+
+        elif mode == "bus":
+            suggestions.append({
+                "text": "Public transport reduces per-person emissions. Prefer buses over private vehicles when possible.",
+                "difficulty": "easy"
+            })
+
+        elif mode in ["car", "motorbike"]:
+            if d <= 5:
+                suggestions.append({
+                    "text": f"For trips under {int(d)} km, walking or cycling could fully avoid emissions.",
+                    "difficulty": "easy"
+                })
+            elif d <= 15:
+                suggestions.append({
+                    "text": "For medium trips, carpooling or public transport can reduce emissions significantly.",
+                    "difficulty": "medium"
+                })
+            else:
+                suggestions.append({
+                    "text": "For long trips, combining errands into one journey can lower total emissions.",
+                    "difficulty": "medium"
+                })
+
+    # -----------------------
+    # ELECTRICITY
+    # -----------------------
+    elif typ == "electricity":
+        kwh = float(activity.get("kwh") or 0)
+
+        if kwh <= 2:
+            suggestions.append({
+                "text": "Your electricity usage is relatively low. Continue switching off unused devices.",
+                "difficulty": "easy"
+            })
+        elif kwh <= 6:
+            suggestions.append({
+                "text": "Reducing standby power and using LED lighting can cut daily electricity usage.",
+                "difficulty": "easy"
+            })
+        else:
+            suggestions.append({
+                "text": "High electricity usage detected. Limiting AC usage and unplugging idle devices can help.",
+                "difficulty": "medium"
+            })
+
+    # -----------------------
+    # FOOD
+    # -----------------------
+    elif typ == "food":
+        cat = (activity.get("food_category") or "").lower()
+
+        if cat == "veg":
+            suggestions.append({
+                "text": "Vegetarian meals have lower carbon impact. Maintaining this diet reduces emissions.",
+                "difficulty": "easy"
+            })
+            suggestions.append({
+                "text": "You could explore locally sourced vegetables to reduce transport emissions further.",
+                "difficulty": "easy"
+            })
+
+        elif cat == "chicken":
+            suggestions.append({
+                "text": "Chicken has lower emissions than red meat. Replacing some meals with vegetarian options helps more.",
+                "difficulty": "medium"
+            })
+
+        elif cat == "beef":
+            suggestions.append({
+                "text": "Beef has a high carbon footprint. Replacing even one meal with plant-based food helps.",
+                "difficulty": "hard"
+            })
+
+    # -----------------------
+    # FALLBACK
+    # -----------------------
+    if not suggestions:
+        suggestions.append({
+            "text": "Small daily choices like saving energy and reducing travel add up over time.",
+            "difficulty": "easy"
+        })
+
+    return suggestions[:2]  # always return max 2
+
 
 # -------------------------------------------------
 # USER CONTEXT (PERSONALIZATION)
@@ -333,12 +424,14 @@ def generate_suggestions_for_activity(activity: Dict[str, Any]) -> List[Dict[str
     user_id = activity.get("user_id")
     user_ctx = get_user_context(user_id) if user_id else {}
 
-    # 🚨 ONE attempt only
-    if USE_GEMINI:
+    
+    # Do NOT call Gemini again if already attempted
+    if USE_GEMINI and not activity.get("ai_attempted"):
         prompt = build_prompt(activity, user_ctx)
         text = call_gemini(prompt)
         parsed = parse_model_output(text)
         if parsed:
             return parsed
+
 
     return rule_based_suggestions(activity)
