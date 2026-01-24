@@ -74,8 +74,7 @@ def consume():
         ok = handle_message(body)
         if ok:
             ch.basic_ack(delivery_tag=method.delivery_tag)
-        else:
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue=QUEUE, on_message_callback=callback)
     print("Consumer started. Waiting for messages...")

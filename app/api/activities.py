@@ -184,7 +184,8 @@ def create_activity(
         "distance_km": db_item.distance_km,
         "kwh": db_item.kwh,
         "co2_kg": float(db_item.co2_kg),
-        "created_at": db_item.created_at.isoformat()
+        "created_at": db_item.created_at.isoformat(),
+         "ai_attempted": True
     }
 
     published = publish_activity(payload_for_queue)
