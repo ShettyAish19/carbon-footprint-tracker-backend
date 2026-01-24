@@ -26,20 +26,19 @@ QUEUE = os.getenv("RABBIT_QUEUE", "activities")
 
 def handle_message(body: bytes):
     try:
+        print("📩 Received message:", body.decode())
+
         data = json.loads(body)
         user_id = data.get("user_id")
         activity_id = data.get("activity_id")
 
+        print(f"⚙️ Processing activity {activity_id} for user {user_id}")
+
         suggestions = generate_suggestions_for_activity(data)
         db: Session = SessionLocal()
 
-        # Remove fallback suggestions
-        try:
-            delete_fallback_suggestions_for_activity(db, activity_id)
-        except Exception as e:
-            print("Warning: could not delete fallback suggestions:", e)
+        delete_fallback_suggestions_for_activity(db, activity_id)
 
-        # Insert AI suggestions
         for s in suggestions:
             create_suggestion(
                 db,
@@ -49,20 +48,20 @@ def handle_message(body: bytes):
                 est_saving=s.get("est_saving_kg", 0.0),
                 difficulty=s.get("difficulty"),
                 meta=s,
-                source="ai" if os.getenv("USE_GEMINI", "false").lower() == "true" else "rule"
-
+                source="ai" if os.getenv("USE_GEMINI","false")=="true" else "rule"
             )
 
-        # ✅ GAMIFICATION UPDATE (critical)
         update_user_stats(db, user_id)
 
         db.close()
+        print("✅ Done processing activity", activity_id)
         return True
 
     except Exception as e:
-        print("Error handling message:", e)
+        print("❌ Error handling message:", e)
         traceback.print_exc()
         return False
+
 
 
 def consume():
